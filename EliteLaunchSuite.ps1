@@ -1,11 +1,13 @@
 # ==========================================================
 # Elite Dangerous Launch Suite   ||||||||||||||||||||||||||
-# v1.2 by CMDR Coyote Bongwater  ||||||||||||||||||||||||||
+# v1.3 by CMDR Coyote Bongwater  ||||||||||||||||||||||||||
 # ==========================================================
 
+ # ===============================
+ # Config ||||||||||||||||||||||||
+ # ===============================
 
-
-# Force 64-bit
+#force 64bit
 if (-not [Environment]::Is64BitProcess) {
     Write-Host "Restarting in 64-bit PowerShell..."
     Start-Process "$env:WINDIR\sysnative\WindowsPowerShell\v1.0\powershell.exe" `
@@ -14,14 +16,22 @@ if (-not [Environment]::Is64BitProcess) {
     exit
 }
 
-# Title for console window so we don't look sketchy
+#set window name
 $Host.UI.RawUI.WindowTitle = "Elite Dangerous Launch Suite"
 
+#locate elite thru steam
 $EliteAppId = 359320
 
-$LocalAppData      = $env:LOCALAPPDATA
-$ProgramFilesX86   = ${env:ProgramFiles(x86)}
+#pathfinding black magic
+$LocalAppData    = $env:LOCALAPPDATA
+$ProgramFilesX86 = ${env:ProgramFiles(x86)}
 
+$LaunchDelaySeconds = 3
+
+#array to track & close all apps on game exit
+$LaunchedProcesses = @()
+
+#todo put back edhm-ui with new pathfinding
 $Apps = @(
     @{
         Name    = "EDMarketConnector"
@@ -46,11 +56,6 @@ $Apps = @(
         Path    = Join-Path $LocalAppData `
             "Elite Dangerous Odyssey Materials Helper Launcher\program\Elite Dangerous Odyssey Materials Helper.exe"
     },
-    #@{
-    #    Name    = "EDHM-UI"
-    #    Process = "EDHM-UI-V3"
-    #    Path    = Join-Path $LocalAppData "EDHM-UI-V3\EDHM-UI-V3.exe"
-    #},
     @{
         Name    = "EDCoPilot"
         Process = "EDCoPilot"
@@ -58,12 +63,10 @@ $Apps = @(
     }
 )
 
-$LaunchDelaySeconds = 3
 
-
-# ===============================
-# Helper Functions ||||||||||||||
-# ===============================
+ # ===============================
+ # Helper Functions ||||||||||||||
+ # ===============================
 
 function Write-Log {
     param ($Message)
@@ -77,18 +80,19 @@ function Is-Process-Running {
 
 function Resolve-AppPath {
     param ($Path)
-
-    if ($Path -is [scriptblock]) {
-        return & $Path
-    }
-    return $Path
+    if ($Path -is [scriptblock]) { & $Path }
+    else { $Path }
 }
 
 
-# ===============================
-# Steam Detection / Startup |||||
-# ===============================
+ # ===============================
+ # Steam Detection / Startup |||||
+ # ===============================
 
+Write-Log "/\ ELITE: DANGEROUS - PILOT SUITE /\"
+Write-Log "||          WELCOME CMDR          ||"
+Write-Log "||________________________________||"
+Write-Log "\n\n\n"
 Write-Log "Checking for Steam..."
 
 if (-not (Is-Process-Running "steam")) {
@@ -101,11 +105,11 @@ else {
 }
 
 
-# ===============================
-# Launch Elite: Dangerous |||||||
-# ===============================
+ # ===============================
+ # Launch Elite: Dangerous
+ # ===============================
 
-Write-Log "Launching Elite: Dangerous via Steam..."
+Write-Log "Launching Elite Dangerous..."
 Start-Process "steam://run/$EliteAppId"
 
 Write-Log "Waiting for EliteDangerous64.exe..."
@@ -118,16 +122,16 @@ do {
 Write-Log "Elite detected (PID: $($EliteProcess.Id))"
 
 
-# ===============================
-# Launch Third-Party Tools ||||||
-# ===============================
+ # ===============================
+ # Launch Third-Party Tools
+ # ===============================
 
 foreach ($App in $Apps) {
 
     Write-Log "Processing $($App.Name)..."
 
     if (Is-Process-Running $App.Process) {
-        Write-Log "$($App.Name) already running. Skipping."
+        Write-Log "$($App.Name) already running. Leaving it alone."
         continue
     }
 
@@ -136,6 +140,10 @@ foreach ($App in $Apps) {
     if ($ResolvedPath -and (Test-Path $ResolvedPath)) {
         Write-Log "Launching $($App.Name)..."
         Start-Process $ResolvedPath
+
+        #add to tracked apps
+        $LaunchedProcesses += $App.Process
+
         Start-Sleep -Seconds $LaunchDelaySeconds
     }
     else {
@@ -144,9 +152,9 @@ foreach ($App in $Apps) {
 }
 
 
-# ===============================
-# Auto-Close When Elite Exits |||
-# ===============================
+ # ===============================
+ # Auto-Close When Elite Exits
+ # ===============================
 
 Write-Log "All tools launched."
 Write-Log "Monitoring Elite Dangerous process..."
@@ -154,6 +162,18 @@ Write-Log "Monitoring Elite Dangerous process..."
 Wait-Process -Id $EliteProcess.Id
 
 Write-Log "Elite Dangerous has exited."
-Write-Log "Launcher shutting down."
+Write-Log "Closing third-party tools..."
 
+#kill 3rd party apps on close
+foreach ($ProcessName in $LaunchedProcesses) {
+
+    $Running = Get-Process -Name $ProcessName -ErrorAction SilentlyContinue
+
+    if ($Running) {
+        Write-Log "Stopping $ProcessName..."
+        $Running | Stop-Process -Force
+    }
+}
+
+Write-Log "Launcher shutting down. Farewell, CMDR."
 exit 0
