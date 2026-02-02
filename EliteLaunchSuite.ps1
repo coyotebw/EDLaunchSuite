@@ -3,9 +3,8 @@
 # v1.3 by CMDR Coyote Bongwater  ||||||||||||||||||||||||||
 # ==========================================================
 
- # ===============================
- # Config ||||||||||||||||||||||||
- # ===============================
+
+
 
 #force 64bit
 if (-not [Environment]::Is64BitProcess) {
@@ -17,7 +16,7 @@ if (-not [Environment]::Is64BitProcess) {
 }
 
 #set window name
-$Host.UI.RawUI.WindowTitle = "Elite Dangerous Launch Suite"
+$Host.UI.RawUI.WindowTitle = "Elite: Dangerous | One-click launch"
 
 #locate elite thru steam
 $EliteAppId = 359320
@@ -89,9 +88,9 @@ function Resolve-AppPath {
  # Steam Detection / Startup |||||
  # ===============================
 
-Write-Log "/\ ELITE: DANGEROUS - PILOT SUITE /\"
+Write-Log "||                                ||"
 Write-Log "||          WELCOME CMDR          ||"
-Write-Log "||________________________________||"
+Write-Log "||                                ||"
 Write-Log "\n\n\n"
 Write-Log "Checking for Steam..."
 
@@ -106,7 +105,7 @@ else {
 
 
  # ===============================
- # Launch Elite: Dangerous
+ # Launch Elite ||||||||||||||||||
  # ===============================
 
 Write-Log "Launching Elite Dangerous..."
@@ -123,7 +122,7 @@ Write-Log "Elite detected (PID: $($EliteProcess.Id))"
 
 
  # ===============================
- # Launch Third-Party Tools
+ # Launch Third-Party Tools ||||||
  # ===============================
 
 foreach ($App in $Apps) {
@@ -152,18 +151,14 @@ foreach ($App in $Apps) {
 }
 
 
- # ===============================
- # Auto-Close When Elite Exits
- # ===============================
-
 Write-Log "All tools launched."
 Write-Log "Monitoring Elite Dangerous process..."
 
-Wait-Process -Id $EliteProcess.Id
 
+
+Wait-Process -Id $EliteProcess.Id
 Write-Log "Elite Dangerous has exited."
 Write-Log "Closing third-party tools..."
-
 #kill 3rd party apps on close
 foreach ($ProcessName in $LaunchedProcesses) {
 
