@@ -84,6 +84,43 @@ function Resolve-AppPath {
     else { $Path }
 }
 
+#pointless but amusing animation
+function WaitSpinner {
+    param (
+        [int]$ProcessId,
+        [string]$Message
+    )
+   param (
+        [int]$ProcessId,
+        [string]$Message
+    )
+
+    $Spinner = @('|', '/', '-', '\')
+    $Index = 0
+    $StartTime = Get-Date
+
+    Write-Host ""  # spacer line
+
+    while (Get-Process -Id $ProcessId -ErrorAction SilentlyContinue) {
+
+        $Elapsed = (Get-Date) - $StartTime
+        if ($Elapsed.TotalHours -ge 1) {
+            $ElapsedText = "{0:hh\:mm\:ss}" -f $Elapsed
+        }
+        else {
+            $ElapsedText = "{0:mm\:ss}" -f $Elapsed
+        }
+        $Char = $Spinner[$Index % $Spinner.Count]
+        Write-Host -NoNewline "`r$Message $Char  [$ElapsedText]"
+        Start-Sleep -Milliseconds 250
+        $Index++
+    }
+    $TotalElapsed = (Get-Date) - $StartTime
+    $FinalTime = "{0:hh\:mm\:ss}" -f $TotalElapsed
+    Write-Host "`r$Message ✔  [$FinalTime]"
+}
+
+
 
  # ===============================
  # MAIN ||||||||||||||||||||||||||
@@ -143,14 +180,11 @@ foreach ($App in $Apps) {
     }
 }
 
-
 Write-Log "All tools launched."
-Write-Log "Waiting for game to exit..."
 
-
-
-Wait-Process -Name "EliteDangerous64.exe"
-Write-Log "Elite Dangerous has exited."
+#wait for close
+WaitSpinner -ProcessId $EliteProcess.Id -Message "Waiting for Elite: Dangerous to close..."
+Write-Log "Elite: Dangerous has exited."
 Write-Log "Closing third-party tools..."
 #kill 3rd party apps on close
 foreach ($ProcessName in $LaunchedProcesses) {
@@ -163,5 +197,6 @@ foreach ($ProcessName in $LaunchedProcesses) {
     }
 }
 
-Write-Log "Launcher shutting down. Farewell, CMDR."
+Write-Log "Launcher shutting down. Farewell, CMDR. o7"
+Start-Sleep -Seconds 3
 exit 0
