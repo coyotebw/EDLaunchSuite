@@ -1,12 +1,9 @@
 # ==========================================================
 # Elite Dangerous Launch Suite   ||||||||||||||||||||||||||
-# v1.3 by CMDR Coyote Bongwater  ||||||||||||||||||||||||||
+# v1.4 by CMDR Coyote Bongwater  ||||||||||||||||||||||||||
 # ==========================================================
 
-
-
-
-#force 64bit
+#first things first: force 64bit
 if (-not [Environment]::Is64BitProcess) {
     Write-Host "Restarting in 64-bit PowerShell..."
     Start-Process "$env:WINDIR\sysnative\WindowsPowerShell\v1.0\powershell.exe" `
@@ -15,7 +12,11 @@ if (-not [Environment]::Is64BitProcess) {
     exit
 }
 
-#set window name
+ # ==========================
+ # Vars |||||||||||||||||||||
+ # ==========================
+
+#window name
 $Host.UI.RawUI.WindowTitle = "Elite: Dangerous | One-click launch"
 
 #locate elite thru steam
@@ -85,33 +86,28 @@ function Resolve-AppPath {
 
 
  # ===============================
- # Steam Detection / Startup |||||
+ # MAIN ||||||||||||||||||||||||||
  # ===============================
 
 Write-Log "||                                ||"
 Write-Log "||          WELCOME CMDR          ||"
 Write-Log "||                                ||"
-Write-Log "\n\n\n"
+Write-Log "`r`n`n`n`n"
 Write-Log "Checking for Steam..."
-
+#find & boot steam
 if (-not (Is-Process-Running "steam")) {
-    Write-Log "Steam not running. Starting Steam..."
+    Write-Log "Steam not running. Launching Steam..."
     Start-Process "steam://open/main"
     Start-Sleep -Seconds 10
 }
 else {
-    Write-Log "Steam is already running."
+    Write-Log "Steam already running."
 }
 
-
- # ===============================
- # Launch Elite ||||||||||||||||||
- # ===============================
-
-Write-Log "Launching Elite Dangerous..."
+#boot elite
+Write-Log "Launching Elite: Dangerous..."
 Start-Process "steam://run/$EliteAppId"
-
-Write-Log "Waiting for EliteDangerous64.exe..."
+Write-Log "Waiting for EliteDangerous64.exe...`r`n (GO CLICK THE BUTTON IN FRONTIER LAUNCHER!)`r`n"
 
 do {
     Start-Sleep -Seconds 2
@@ -121,16 +117,13 @@ do {
 Write-Log "Elite detected (PID: $($EliteProcess.Id))"
 
 
- # ===============================
- # Launch Third-Party Tools ||||||
- # ===============================
-
+#launch apps
 foreach ($App in $Apps) {
 
-    Write-Log "Processing $($App.Name)..."
+    Write-Log "Launching $($App.Name)..."
 
     if (Is-Process-Running $App.Process) {
-        Write-Log "$($App.Name) already running. Leaving it alone."
+        Write-Log "$($App.Name) already running."
         continue
     }
 
@@ -152,11 +145,11 @@ foreach ($App in $Apps) {
 
 
 Write-Log "All tools launched."
-Write-Log "Monitoring Elite Dangerous process..."
+Write-Log "Waiting for game to exit..."
 
 
 
-Wait-Process -Id $EliteProcess.Id
+Wait-Process -Name "EliteDangerous64.exe"
 Write-Log "Elite Dangerous has exited."
 Write-Log "Closing third-party tools..."
 #kill 3rd party apps on close
