@@ -1,6 +1,6 @@
 # ==========================================================
 # Elite Dangerous Launch Suite   ||||||||||||||||||||||||||
-# v1.4 by CMDR Coyote Bongwater  ||||||||||||||||||||||||||
+# v1.5 by CMDR Coyote Bongwater  ||||||||||||||||||||||||||
 # ==========================================================
 
 #first things first: force 64bit
@@ -31,6 +31,7 @@ $LaunchDelaySeconds = 3
 #array to track & close all apps on game exit
 $LaunchedProcesses = @()
 
+#array of 3rd party tools
 #todo put back edhm-ui with new pathfinding
 $Apps = @(
     @{
@@ -120,15 +121,71 @@ function WaitSpinner {
     Write-Host "`r$Message ✔  [$FinalTime]"
 }
 
+#error checking
+function Test-SteamAvailable {
+    try {
+        $null = Get-Item "HKCU:\Software\Valve\Steam" -ErrorAction Stop
+        return $true
+    }
+    catch {
+        return $false
+    }
+}
+
+function Test-Executable {
+    param (
+        [string]$Path
+    )
+
+    return ($Path -and (Test-Path $Path))
+}
+
+function Assert-OrExit {
+    param (
+        [bool]$Condition,
+        [string]$ErrorMessage
+    )
+
+    if (-not $Condition) {
+        Write-Log "ERROR: $ErrorMessage"
+        Write-Log "Launcher cannot continue."
+        Start-Sleep -Seconds 3
+        exit 1
+    }
+}
 
 
  # ===============================
  # MAIN ||||||||||||||||||||||||||
  # ===============================
 
+#error catching
+Write-Log "Running preflight checks..."
+
+# Steam must exist
+Assert-OrExit `
+    (Test-SteamAvailable) `
+    "Steam does not appear to be installed."
+
+# Elite Steam App ID sanity check
+Assert-OrExit `
+    ($EliteAppId -is [int]) `
+    "Elite Dangerous Steam App ID is invalid."
+
+# Validate third-party tool paths (non-fatal)
+foreach ($App in $Apps) {
+
+    $ResolvedPath = Resolve-AppPath $App.Path
+    if (-not (Test-Executable $ResolvedPath)) {
+        Write-Log "WARNING: $($App.Name) not found and will be skipped."
+        $App.Path = $null
+    }
+}
+
+Clear-Host
 Write-Log "||                                ||"
 Write-Log "||          WELCOME CMDR          ||"
-Write-Log "||                                ||"
+Write-Log "||               o7               ||"
 Write-Log "`r`n`n`n`n"
 Write-Log "Checking for Steam..."
 #find & boot steam
@@ -141,29 +198,38 @@ else {
     Write-Log "Steam already running."
 }
 
-#boot elite
+#boot elite, kill process if not detected within 60s
 Write-Log "Launching Elite: Dangerous..."
 Start-Process "steam://run/$EliteAppId"
 Write-Log "Waiting for EliteDangerous64.exe...`r`n (GO CLICK THE BUTTON IN FRONTIER LAUNCHER!)`r`n"
+$EliteStartTimeout = (Get-Date).AddSeconds(60)
 
 do {
     Start-Sleep -Seconds 2
     $EliteProcess = Get-Process -Name "EliteDangerous64" -ErrorAction SilentlyContinue
-} until ($EliteProcess)
+} until ($EliteProcess -or (Get-Date) -gt $EliteStartTimeout)
+
+Assert-OrExit `
+    ($EliteProcess) `
+    "Elite Dangerous failed to start."
 
 Write-Log "Elite detected (PID: $($EliteProcess.Id))"
 
 
 #launch apps
 foreach ($App in $Apps) {
-
+    
+    if (-not $App.Path) {
+        continue
+    }
+    
     Write-Log "Launching $($App.Name)..."
-
+    
     if (Is-Process-Running $App.Process) {
         Write-Log "$($App.Name) already running."
         continue
     }
-
+    
     $ResolvedPath = Resolve-AppPath $App.Path
 
     if ($ResolvedPath -and (Test-Path $ResolvedPath)) {
